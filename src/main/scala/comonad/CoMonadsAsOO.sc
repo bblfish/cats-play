@@ -175,8 +175,8 @@ def extendUp2R[A,B](p: Preview[A,B])(t: Thermostat[A]): Thermostat[B] = {
   d4
 }
 
-extendUp2L[Celsius,Celsius](up)(initialThermostat)
-extendUp2R[Celsius,Celsius](up)(initialThermostat)
+extendUp2L[Celsius,Celsius](up)(initialThermostat) ° extract
+extendUp2R[Celsius,Celsius](up)(initialThermostat) ° extract
 //those are the same
 
 def compose[A,B,C](p1: Preview[A,B], p2: Preview[B,C]): Preview[A,C] = {
@@ -189,12 +189,26 @@ def double[A]: Preview[Kelvin,Kelvin] = (a: Thermostat[Kelvin]) => kelvin((a.f a
 def toKelvin: Preview[Celsius,Kelvin] = (a: Thermostat[Celsius]) => celsiusToKelvin(a.f(a.t))
 
 def zeroPreview[A]: Preview[A,Celsius] = (t: Thermostat[A])=>celsius(0.0)
+def show[A] = (t: Thermostat[A]) => t.t
 
 val inialThermAsK = extend(toKelvin)(initialThermostat)
-def plus3[A]: Preview[Kelvin,Kelvin] = (a: Thermostat[Kelvin]) => kelvin(a.t+3)
+def x3[A]: Preview[Kelvin,Kelvin] = (a: Thermostat[Kelvin]) => kelvin(a.t*3)
 
 
-extendUp2L[Kelvin,Kelvin](compose(plus3,double))(inialThermAsK) ° extract
-extendUp2R[Kelvin,Kelvin](compose(plus3,double))(inialThermAsK) ° extract
+extendUp2L[Celsius,Celsius](extract)(initialThermostat) ° show
+extendUp2R[Celsius,Celsius](extract)(initialThermostat) ° show
+extend[Celsius,Celsius](extract)(initialThermostat) ° show
+extend[Celsius,Celsius](zeroPreview)(initialThermostat) ° show
 
+
+
+//so the answer to the exercise is that the show function that
+//accesses the temperature directly reveals the difference between the
+//two implementations!
+// If one removes the accessor (ie, hide that t.t field), then one just ends
+// up with maps of the extracted category.
+// The difference then between working with Thermostat and working on
+// the extracted categories then is that with Thermostat one always keeps
+// access to a read only view of the underlying data point. So one can always
+// find out how the calculation was built up.
 
