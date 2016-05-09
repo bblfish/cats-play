@@ -42,8 +42,8 @@ type Preview[A,B] = Thermostat[A] => B
 type Adjustment[A,B] = Thermostat[A] => Thermostat[B]
 
 val kelvinToCelsius = (k: Kelvin) => celsius(k-273.15)
-def up[A]: Preview[A,A] = { case Thermostat(t,f) => f(kelvin(t+1.0)) }
-def down[A]: Preview[A,A] = { case Thermostat(t,f) => f(kelvin(t-1.0)) }
+def up: Preview[Kelvin,Kelvin] = { case Thermostat(t,f) => f(kelvin(t+1.0)) }
+def down: Preview[Kelvin,Kelvin] = { case Thermostat(t,f) => f(kelvin(t-1.0)) }
 
 val it = Thermostat[Kelvin](kelvin(3.0), identity)
 
@@ -63,7 +63,7 @@ val s3 = it >=> up >=> up >=> square >=> up  extract
 
 //-- testing with CoReader
 type CoReader[A,B] = Cokleisli[Thermostat,A,B]
-def CoReader[A,B](f: Thermostat[A]=>B)= Cokleisli(f)
+def CoReader[A,B](f: Thermostat[A]=>B): Cokleisli[Thermostat,A,B]= Cokleisli[Thermostat,A,B](f)
 
 val kup = CoReader[Kelvin,Kelvin](up)
 val kdown = CoReader[Kelvin,Kelvin](down)
@@ -71,4 +71,10 @@ val ksquare = CoReader[Kelvin,Kelvin](square)
 
 val k2 = (kup andThen kup andThen ksquare).run(it)
 val k3 = (kup andThen kup andThen ksquare andThen kup).run(it)
+
+//one can use the following implicit to avoid wrapping each of the Previews in a cokleisli
+implicit
+def toCoReader(preview: Preview[Kelvin,Kelvin]):Cokleisli[Thermostat,Kelvin,Kelvin]=CoReader[Kelvin,Kelvin](preview)
+
+val k4 = (CoReader[Kelvin,Kelvin](up) andThen up andThen square andThen up).run(it)
 
