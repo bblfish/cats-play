@@ -21,7 +21,7 @@ def celsius(d: java.lang.Double): Celsius = d.asInstanceOf[Celsius]
 //case class Kelvin(temp: Double)
 case class Thermostat[A] (t: Kelvin, f: Kelvin=>A) {
   //this is the OO version
-  def >=>[B](show: Thermostat[A]=>B) = Thermostat[B](t,x=>show(Thermostat(x,f)))
+  def <=<[B](show: Thermostat[A]=>B) = Thermostat[B](t,x=>show(Thermostat(x,f)))
 }
 
 object X {
@@ -49,9 +49,9 @@ val it = Thermostat[Kelvin](kelvin(3.0), identity)
 
 val t0 =  it.extract
 val t1 =  it.coflatMap(up).extract
-val t1o = it >=> (up) extract
+val t1o = it <=< (up) extract
 val t2 =  it.coflatMap(up).coflatMap(up).extract
-val t2o = it >=> (up) >=> (up) extract
+val t2o = it <=< (up) <=< (up) extract
 
 //test counterargument from http://gelisam.blogspot.co.uk/2013/07/comonads-are-neighbourhoods-not-objects.html
 
@@ -59,7 +59,7 @@ val square: Preview[Kelvin,Kelvin] = { case Thermostat(t,f) => f(kelvin(t*t)) }
 
 val s1 = it.coflatMap(up).coflatMap(square).extract
 val s2 = it.coflatMap(up).coflatMap(up).coflatMap(square).extract
-val s3 = it >=> up >=> up >=> square >=> up  extract
+val s3 = it <=< up <=< up <=< square <=< up  extract
 
 //-- testing with CoReader
 type CoReader[A,B] = Cokleisli[Thermostat,A,B]
