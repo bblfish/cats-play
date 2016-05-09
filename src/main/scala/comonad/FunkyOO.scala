@@ -1,9 +1,12 @@
 package comonad
 
+import cats.Comonad
+
 /**
   * Created by hjs on 06/05/2016.
   */
 object FunkyOO {
+
 
   /**
     * Functional OO notation as described in
@@ -15,5 +18,7 @@ object FunkyOO {
   implicit class FO[A](val a: A) extends AnyVal {
     def °[B](f: A => B): B = f(a)
   }
+
+
 
 }
