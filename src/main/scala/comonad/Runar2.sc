@@ -156,7 +156,6 @@ def nextGen(st: PointedGrid): Boolean = {
 val next: PointedGrid = store.coflatMap(nextGen _)
 val next2: PointedGrid = next.coflatMap(nextGen _)
 
-val in1000: PointedGrid = (1 to 1000).foldRight(store)((_,s)=> s.coflatMap(nextGen _))
 
 
 def toList(pointedGrid: PointedGrid) =
@@ -168,4 +167,7 @@ lifegrid
 printLifeGrid(toList(store))
 printLifeGrid(toList(next ))
 printLifeGrid(toList(next2))
+
+val in1000: PointedGrid = (1 to 1000).foldRight(store)((_,s)=> s.coflatMap(nextGen _))
+//stack overflow:
 //printLifeGrid(toList(in1000))
