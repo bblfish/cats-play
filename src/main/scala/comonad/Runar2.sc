@@ -133,6 +133,10 @@ type PointedGrid = ST[Position,Boolean]
 val store: PointedGrid  = (find _, (0,0))
 val r11 = store.extract
 
+val positionsAroundMe = List((-1, -1), (-1, 0), (-1, 1),
+  (0, -1), (0, 1),
+  (1, -1), (1, 0), (1, 1))
+
 def nextGen(st: PointedGrid): Boolean = {
   def translateBy(x: Int, y: Int): (Int,Int) = {
     val pos = st._2
@@ -140,9 +144,6 @@ def nextGen(st: PointedGrid): Boolean = {
     (wrap(pos._1+x)%8,wrap(pos._2+y)%8)
   }
   val isalive = st._1
-  val positionsAroundMe = List((-1, -1), (-1, 0), (-1, 1),
-    (0, -1), (0, 1),
-    (1, -1), (1, 0), (1, 1))
 
   val next = positionsAroundMe.map(p=>isalive(translateBy(p._1,p._2)))
   val friends = next.filter(x=>x).size
@@ -168,6 +169,15 @@ printLifeGrid(toList(store))
 printLifeGrid(toList(next ))
 printLifeGrid(toList(next2))
 
-val in1000: PointedGrid = (1 to 1000).foldRight(store)((_,s)=> s.coflatMap(nextGen _))
-//stack overflow:
-//printLifeGrid(toList(in1000))
+//this will stack overflow:
+//val in1000: PointedGrid = (1 to 1000).foldRight(store)((_,s)=> s.coflatMap(nextGen _))
+
+
+val in1000: Eval[PointedGrid] = Foldable[List].foldRight((1 to 5).toList,
+  Eval.now[PointedGrid](store)) {
+  (_, ls) => ls.map((pg: PointedGrid) => pg.coflatMap(nextGen _))
+}
+in1000.map{ life =>
+   val x = printLifeGrid(toList(life))
+   println(x)
+}.value
