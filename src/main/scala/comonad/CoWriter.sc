@@ -1,4 +1,3 @@
-import comonad.FunkyOO._
 import cats._
 import cats.implicits._
 //if one does not import the cats.implicits, one has to look at least in the next two imports
