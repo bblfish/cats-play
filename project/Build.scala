@@ -9,7 +9,7 @@ object ApplicationBuild extends Build {
 
   val macroParadise = compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 
-  val kindProjector = compilerPlugin("org.spire-math" %% "kind-projector" % "0.6.3")
+  val kindProjector = compilerPlugin("org.spire-math" %% "kind-projector" % "0.7.1")
   val resetAllAttrs = "org.scalamacros" %% "resetallattrs" % "1.0.0-M1"
 
   val specs2Version = "3.6"
@@ -18,15 +18,19 @@ object ApplicationBuild extends Build {
   val specs2Scalacheck = "org.specs2" %% "specs2-scalacheck" % specs2Version
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.12.4"
 
+  //for eff-cats
+  val effcats = "org.atnos" %% "eff-cats" % "1.6.2"
+  val si27212fix = compilerPlugin("com.milessabin" % "si2712fix-plugin_2.11.8" % "1.2.0")
+
   lazy val root = (project in file(".")).
     settings(
       organization := "net.bblfish",
       name := "cats-play",
       scalaVersion := "2.11.8",
       libraryDependencies ++= Seq(
-        catsAll,
+        catsAll, effcats,
         specs2Core % Test, specs2Scalacheck % Test, scalacheck % Test,
-        macroParadise, kindProjector, resetAllAttrs
+        macroParadise, kindProjector, resetAllAttrs, si27212fix
       ),
       scalacOptions ++= Seq(
         "-deprecation",
