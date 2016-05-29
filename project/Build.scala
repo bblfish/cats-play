@@ -22,16 +22,31 @@ object ApplicationBuild extends Build {
   val effcats = "org.atnos" %% "eff-cats" % "1.6.2"
   val si27212fix = compilerPlugin("com.milessabin" % "si2712fix-plugin_2.11.8" % "1.2.0")
 
+  //in order to run from `sbt test:console`, to reduce the requests to github in Free examples
+  val ammonite = "com.lihaoyi" % "ammonite-repl" % "0.5.8" % "test" cross CrossVersion.full
+
+  lazy val http4sVersion = "0.13.2"
+
+  val http4s = Seq(
+    "org.http4s" %% "http4s-dsl" % http4sVersion,
+    "org.http4s" %% "http4s-argonaut" % http4sVersion,
+//    "org.http4s" %% "http4s-blaze-server" % http4sVersion,
+    "org.http4s" %% "http4s-blaze-client" % http4sVersion,
+    "io.argonaut" %% "argonaut" % "6.2-M1"
+  )
+
+
   lazy val root = (project in file(".")).
     settings(
       organization := "net.bblfish",
       name := "cats-play",
       scalaVersion := "2.11.8",
       libraryDependencies ++= Seq(
-        catsAll, effcats,
+        catsAll, effcats, ammonite,
         specs2Core % Test, specs2Scalacheck % Test, scalacheck % Test,
         macroParadise, kindProjector, resetAllAttrs, si27212fix
-      ),
+      ) ++ http4s,
+      initialCommands in (Test, console) := """ammonite.repl.Main.run("")""",
       scalacOptions ++= Seq(
         "-deprecation",
         "-encoding", "UTF-8",
