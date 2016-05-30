@@ -18,12 +18,22 @@ val interpreter: GitHub ~> Task = GHInterpret(client,GitHubAuth(token))
 val logins1 = GHA.logins(List("bblfish","markus1189","sjrd","milessabin"))
 val logins2 = GHA.logins(List("mgttlinger","tpolecat","DavidGregory084","ceedubs"))
 val logins3 = GHA.logins(List("gregghz","InTheNow","non","dialelo"))
+val loginsDups = GHA.logins(List("bblfish","tpolecat","non","rossabaker"))
 
-val logins = (logins1 |@| logins2 |@| logins3) .map(_ ++ _ ++ _)
-val users = logins.foldMap(interpreter).attemptRun.toOption.get
-val users2 = logins.foldMap(interpreter).attemptRun.toOption.get
 
+import cats.syntax.applicative._
+import cats.syntax.cartesian._
+import free.GitHubApplicative._
+
+val logins = (logins1 |@| logins2 |@| logins3 |@| loginsDups)
+              .map(_ ++ _ ++ _ ++ _)
+val users: List[free.User] = logins.foldMap(interpreter).attemptRun.toOption.get
+val users2: List[free.User] = logins.foldMap(interpreter).attemptRun.toOption.get
+
+//if Task is run in a parallel applicative this should not be the same
 users == users2
 
+//let's just check the exact order
+users.map(_.login)
 
 client.shutdownNow()
