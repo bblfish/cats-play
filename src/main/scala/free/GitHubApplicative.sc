@@ -11,20 +11,12 @@ import org.http4s.client.blaze.PooledHttp1Client
 import scalaz.Nondeterminism
 import scalaz.concurrent.Task
 
-val token = "c..."
+//get your token from https://github.com/settings/tokens/new
+//see https://developer.github.com/v3/oauth/
+val token = "c_"
 val client = PooledHttp1Client()
 
 val task: GitHub ~> Task = GHInterpret(client,GitHubAuth(token))
-
-//task(GetUser("bblfish")).attemptRun
-//task(ListIssues("read-write-web","rww-play")).attemptRun
-//task(ListIssues("read-write-web","rww-play")).attemptRun
-//task(GetComments("read-write-web","rww-play",155)).attemptRun
-
-
-val endTask = GHM.allUsers("read-write-web","rww-play").foldMap(task)
-
-val resOr = endTask.attemptRun
 
 
 val logins1 = GHA.logins(List("bblfish","markus1189","sjrd","milessabin"))
@@ -35,9 +27,13 @@ val logins3 = GHA.logins(List("gregghz","InTheNow","non","dialelo"))
 import cats.syntax.applicative._
 import cats.syntax.cartesian._
 
+import free.GitHubApplicative._
 
 val logins = (logins1 |@| logins2 |@| logins3) .map(_ ++ _ ++ _)
 val users = logins.foldMap(task).attemptRun.toOption.get
+val users2 = logins.foldMap(task).attemptRun.toOption.get
+
+users == users2
 
 
 client.shutdownNow()
