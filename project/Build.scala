@@ -3,7 +3,7 @@ import sbt.Keys._
 
 object ApplicationBuild extends Build {
 
-  val catsVersion = "0.5.0"
+  val catsVersion = "0.6.0"
 
   val catsAll = "org.typelevel" %% "cats" % catsVersion
 
