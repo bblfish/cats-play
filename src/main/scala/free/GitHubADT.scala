@@ -162,6 +162,10 @@ object ParallelTaskNat extends (Task ~> ParallelTask) {
   override def apply[A](fa: Task[A]): ParallelTask[A] = Parallel(fa)
 }
 
+object TaskFork extends (Task ~> Task) {
+  override def apply[A](fa: Task[A]): Task[A] = Task.fork(fa)
+}
+
 
 object GitHubApplicative {
   type GHApplicative[A] = FreeAp[GitHub, A]
