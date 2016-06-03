@@ -128,7 +128,7 @@ case class GHInterpret(client: Client, auth: GitHubAuth) extends (GitHub ~> Task
         val r = Request(Method.GET, uri, HttpVersion.`HTTP/1.1`,
           Headers(Header("Authorization", s"token ${auth.token}")))
         println(s"fetch: $uri")
-        client.fetchAs[Json](r)
+        client.fetchAs[Json](r).onFinish(opt=>Task.now(println(s"finished <$uri> with $opt")))
       }
     }
   }
