@@ -2,9 +2,8 @@
 //to reduce calls to server
 
 import cats.~>
-import free.{GitHubApplicative => GHA,GHInterpret,GitHub,GitHubAuth}
+import free.{GHInterpret, GitHub, GitHubAuth, User}
 import org.http4s.client.blaze.PooledHttp1Client
-
 import scalaz.concurrent.Task
 
 //get your token from https://github.com/settings/tokens/new
@@ -14,26 +13,32 @@ val client = PooledHttp1Client()
 
 val interpreter: GitHub ~> Task = GHInterpret(client,GitHubAuth(token))
 
+import free.GitHubApplicative._
 
-val logins1 = GHA.logins(List("bblfish","markus1189","sjrd","milessabin"))
-val logins2 = GHA.logins(List("mgttlinger","tpolecat","DavidGregory084","ceedubs"))
-val logins3 = GHA.logins(List("gregghz","InTheNow","non","dialelo"))
-val loginsDups = GHA.logins(List("bblfish","tpolecat","non","rossabaker"))
-
+val logins1 = loginsToApp(List("bblfish", "markus1189", "sjrd", "milessabin"))
+val logins2 = loginsToApp(List("mgttlinger", "tpolecat", "DavidGregory084", "ceedubs"))
+val logins3 = loginsToApp(List("gregghz", "InTheNow", "non", "dialelo"))
+val loginsDups = loginsToApp(List("bblfish", "tpolecat", "non", "rossabaker"))
 
 import cats.syntax.applicative._
 import cats.syntax.cartesian._
-import free.GitHubApplicative._
 
-val logins = (logins1 |@| logins2 |@| logins3 |@| loginsDups)
-              .map(_ ++ _ ++ _ ++ _)
-val users: List[free.User] = logins.foldMap(interpreter).attemptRun.toOption.get
-val users2: List[free.User] = logins.foldMap(interpreter).attemptRun.toOption.get
+val loginsApp: GHApplicative[List[User]] =
+  (logins1 |@| logins2 |@| logins3 |@| loginsDups).map(_ ++ _ ++ _ ++ _)
 
+//for loginsTask.runAsync
+//val outputF = (either: \/[Throwable,List[User]] ) => either match {
+//  case -\/(e) => println(e)
+//  case \/-(users) => println(users)
+//}
+
+val loginsTask: Task[List[User]] = loginsApp.foldMap(interpreter)(apptask)
+val users1 = loginsTask.run
+val users2 = loginsApp.foldMap(interpreter).run
 //if Task is run in a parallel applicative this should not be the same
-users == users2
+users1 == users2
 
 //let's just check the exact order
-users.map(_.login)
+users1.map(_.login)
 
 client.shutdownNow()

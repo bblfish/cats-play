@@ -159,6 +159,18 @@ case class GHInterpret(client: Client, auth: GitHubAuth) extends (GitHub ~> Task
 
 object GitHubApplicative {
   type GHApplicative[A] = FreeApplicative[GitHub, A]
+  import cats.std.list._
+  import cats.syntax.traverse._
+
+  //see: https://gist.github.com/pchiusano/8965595
+  //parallel applicative
+  implicit val apptask = new Applicative[Task] {
+    override def pure[A](x: A): Task[A] = Task.now(x)
+
+    //note: the laziness is opposite to that in cats, so this adaptation may not be good
+    override def ap[A, B](f: Task[A => B])(a: Task[A]): Task[B] = //
+      Nondeterminism[Task].mapBoth(f, a)((a1ToB, a1) => a1ToB(a1))
+  }
 
   def listIssues(owner: String, repo: String): GHApplicative[List[Issue]] =
     FreeApplicative.lift(ListIssues(owner, repo))
@@ -169,25 +181,7 @@ object GitHubApplicative {
   def getUser(login: String): GHApplicative[User] =
     FreeApplicative.lift(GetUser(login))
 
-  import cats.syntax.traverse._
-  import cats.std.list._
 
-
-  def logins(logins: List[String]): GHApplicative[List[User]] = logins.traverseU(getUser(_))
-
-  //see: https://gist.github.com/pchiusano/8965595
-  //parallel applicative
-
-  implicit val apptask = new Applicative[Task] {
-    override def pure[A](x: A): Task[A] = Task.now(x)
-
-    //note: the laziness is opposite to that in cats, so this adaptation may not be good
-    override def ap[A, B](f: Task[A => B])(a: Task[A]): Task[B] = apply2(f,a)((a1ToB, a1) => a1ToB(a1))
-
-    //override
-    private
-    def apply2[A,B,C](a: => Task[A], b: => Task[B])(f: (A,B) => C): Task[C] = Nondeterminism[Task].mapBoth(a, b)(f)
-
-  }
+  def loginsToApp(logins: List[String]): GHApplicative[List[User]] = logins.traverseU(getUser(_))
 
 }
