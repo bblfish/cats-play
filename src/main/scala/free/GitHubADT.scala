@@ -2,13 +2,11 @@ package free
 
 import _root_.argonaut.{CodecJson, _}
 import _root_.argonaut.Argonaut._
-import cats.free.{Free, FreeApplicative}
-import cats.std.map
-import cats.{Applicative, Monad, ~>}
+
+import scalaz.{-\/, Applicative, Free, FreeAp, Functor, Monad, Nondeterminism, Scalaz, \/-, ~>}
 import org.http4s._
 import org.http4s.client.Client
 
-import scalaz.{-\/, Nondeterminism, \/-}
 import scalaz.concurrent.Task
 
 
@@ -78,7 +76,6 @@ object GitHubMonadic {
 
   //  val client = PooledHttp1Client()
 
-
   type GHMonadic[A] = Free[GitHub, A]
 
   def listIssues(owner: String, repo: String): GHMonadic[List[Issue]] =
@@ -91,9 +88,9 @@ object GitHubMonadic {
     Free.liftF(GetUser(login))
 
 
-  import cats.syntax.traverse._
-  import cats.std.list._
-  import cats.Traverse
+//  import cats.syntax.traverse._
+//  import cats.std.list._
+  import Scalaz._
 
   //clearly this is just a toy example and does not make much sense since the github api returns all
   //the information in each request, meaning that making seperate requests for users is not really needed
@@ -110,14 +107,14 @@ object GitHubMonadic {
 
 
   implicit val mtask = new Monad[Task] {
-    override def pure[A](x: A): Task[A] = Task.now(x)
-    override def flatMap[A, B](fa: Task[A])(f: (A) => Task[B]): Task[B] = fa.flatMap(f)
+    override def point[A](x: => A): Task[A] = Task.delay(x)
+    override def bind[A, B](fa: Task[A])(f: (A) => Task[B]): Task[B] = fa.flatMap(f)
   }
 
 }
 
 case class GHInterpret(client: Client, auth: GitHubAuth) extends (GitHub ~> Task) {
-  import org.http4s.argonaut.json
+  import org.http4s.argonaut.jsonDecoder
 
   def fetch(uriStr: String): Task[Json] = {
     val parsedUri = Uri.fromString(uriStr)
@@ -158,29 +155,28 @@ case class GHInterpret(client: Client, auth: GitHubAuth) extends (GitHub ~> Task
 }
 
 object GitHubApplicative {
-  type GHApplicative[A] = FreeApplicative[GitHub, A]
-  import cats.std.list._
-  import cats.syntax.traverse._
+  type GHApplicative[A] = FreeAp[GitHub, A]
+//  import cats.std.list._
+//  import cats.syntax.traverse._
+    import scalaz.Scalaz._
 
   //see: https://gist.github.com/pchiusano/8965595
   //parallel applicative
   implicit val apptask = new Applicative[Task] {
-    override def pure[A](x: A): Task[A] = Task.now(x)
+    override def point[A](x: => A): Task[A] = Task.now(x)
 
-    //note: the laziness is opposite to that in cats, so this adaptation may not be good
-    override def ap[A, B](f: Task[A => B])(a: Task[A]): Task[B] = //
-      Nondeterminism[Task].mapBoth(f, a)((a1ToB, a1) => a1ToB(a1))
+    override def ap[A, B](a: => Task[A])(fab: => Task[(A) => B]): Task[B] =
+      Nondeterminism[Task].mapBoth(fab, a)((a1ToB, a1) => a1ToB(a1))
   }
 
   def listIssues(owner: String, repo: String): GHApplicative[List[Issue]] =
-    FreeApplicative.lift(ListIssues(owner, repo))
+    FreeAp.lift(ListIssues(owner, repo))
 
   def getComments(owner: String, repo: String, issue: Int): GHApplicative[List[Comment]] =
-    FreeApplicative.lift(GetComments(owner, repo, issue))
+    FreeAp.lift(GetComments(owner, repo, issue))
 
   def getUser(login: String): GHApplicative[User] =
-    FreeApplicative.lift(GetUser(login))
-
+    FreeAp.lift(GetUser(login))
 
   def loginsToApp(logins: List[String]): GHApplicative[List[User]] = logins.traverseU(getUser(_))
 

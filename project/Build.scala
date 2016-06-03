@@ -25,7 +25,7 @@ object ApplicationBuild extends Build {
   //in order to run from `sbt test:console`, to reduce the requests to github in Free examples
   val ammonite = "com.lihaoyi" % "ammonite-repl" % "0.5.8" % "test" cross CrossVersion.full
 
-  lazy val http4sVersion = "0.13.2"
+  lazy val http4sVersion = "0.14.0a-SNAPSHOT"
 
   val http4s = Seq(
     "org.http4s" %% "http4s-dsl" % http4sVersion,
@@ -41,6 +41,7 @@ object ApplicationBuild extends Build {
       organization := "net.bblfish",
       name := "cats-play",
       scalaVersion := "2.11.8",
+      resolvers += Resolver.sonatypeRepo("snapshots"), //for http4s
       libraryDependencies ++= Seq(
         catsAll, effcats, ammonite,
         specs2Core % Test, specs2Scalacheck % Test, scalacheck % Test,
