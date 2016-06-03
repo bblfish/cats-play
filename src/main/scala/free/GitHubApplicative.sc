@@ -3,10 +3,12 @@
 
 import scalaz.~>
 import scalaz.Scalaz._
-import scalaz.concurrent.Task
-
-import free.{GHInterpret, GitHub, GitHubAuth, User}
+import scalaz.concurrent.{Strategy, Task}
+import free._
 import org.http4s.client.blaze.PooledHttp1Client
+
+import scalaz.Tags._
+import scalaz.concurrent.Task.ParallelTask
 
 //get your token from https://github.com/settings/tokens/new
 //see https://developer.github.com/v3/oauth/
@@ -33,9 +35,13 @@ val loginsApp: GHApplicative[List[User]] =
 //  case \/-(users) => println(users)
 //}
 
-val loginsTask: Task[List[User]] = loginsApp.foldMap(interpreter)(apptask)
-val users1 = loginsTask.unsafePerformSync
-val users2 = loginsApp.foldMap(interpreter).unsafePerformSync
+import scalaz.syntax.tag._
+import Task.taskParallelApplicativeInstance
+
+val loginsTask: ParallelTask[List[User]] = loginsApp.foldMap(interpreter andThen ParallelTaskNat)
+
+val users1 = loginsTask.unwrap.unsafePerformSync
+val users2 = loginsApp.foldMap(interpreter andThen ParallelTaskNat).unwrap.unsafePerformSync
 //if Task is run in a parallel applicative this should not be the same
 users1 == users2
 

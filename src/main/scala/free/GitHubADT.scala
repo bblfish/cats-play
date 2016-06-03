@@ -1,13 +1,17 @@
 package free
 
+import java.util.concurrent.ExecutorService
+
 import _root_.argonaut.{CodecJson, _}
 import _root_.argonaut.Argonaut._
 
-import scalaz.{-\/, Applicative, Free, FreeAp, Functor, Monad, Nondeterminism, Scalaz, \/-, ~>}
+import scalaz.{-\/, Applicative, Free, FreeAp, Functor, Monad, Nondeterminism, Scalaz, Tag, \/-, ~>}
 import org.http4s._
 import org.http4s.client.Client
 
+import scalaz.Tags.Parallel
 import scalaz.concurrent.Task
+import scalaz.concurrent.Task.ParallelTask
 
 
 /**
@@ -154,20 +158,15 @@ case class GHInterpret(client: Client, auth: GitHubAuth) extends (GitHub ~> Task
   }
 }
 
+object ParallelTaskNat extends (Task ~> ParallelTask) {
+  override def apply[A](fa: Task[A]): ParallelTask[A] = Parallel(fa)
+}
+
+
 object GitHubApplicative {
   type GHApplicative[A] = FreeAp[GitHub, A]
-//  import cats.std.list._
-//  import cats.syntax.traverse._
-    import scalaz.Scalaz._
 
-  //see: https://gist.github.com/pchiusano/8965595
-  //parallel applicative
-  implicit val apptask = new Applicative[Task] {
-    override def point[A](x: => A): Task[A] = Task.now(x)
-
-    override def ap[A, B](a: => Task[A])(fab: => Task[(A) => B]): Task[B] =
-      Nondeterminism[Task].mapBoth(fab, a)((a1ToB, a1) => a1ToB(a1))
-  }
+  import scalaz.Scalaz._
 
   def listIssues(owner: String, repo: String): GHApplicative[List[Issue]] =
     FreeAp.lift(ListIssues(owner, repo))
