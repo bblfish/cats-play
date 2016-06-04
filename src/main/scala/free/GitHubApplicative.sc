@@ -36,12 +36,11 @@ val loginsApp: GHApplicative[List[User]] =
 //}
 
 import scalaz.syntax.tag._
-import Task.taskParallelApplicativeInstance
 
-val loginsTask: ParallelTask[List[User]] = loginsApp.foldMap(interpreter andThen TaskFork andThen ParallelTaskNat)
+val parrallelTask: ParallelTask[List[User]] = loginsApp.foldMap(interpreter andThen ParallelTaskNat)(Task.taskParallelApplicativeInstance)
 
-val users1 = loginsTask.unwrap.unsafePerformSync
-val users2 = loginsApp.foldMap(interpreter andThen TaskFork andThen  ParallelTaskNat).unwrap.unsafePerformSync
+val users1 = parrallelTask.unwrap.unsafePerformSync
+val users2 = loginsApp.foldMap(interpreter).unsafePerformSync
 //if Task is run in a parallel applicative this should not be the same
 users1 == users2
 
