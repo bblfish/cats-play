@@ -1,8 +1,9 @@
 package play.monoid
 
-import cats.syntax.all._
-import algebra.Monoid
+import scalaz.Monoid
+import scalaz.Scalaz._
 
+//code from http://blog.higher-order.com/blog/2014/03/19/monoid-morphisms-products-coproducts/
 
 object Eithers {
   def left[A: Monoid, B: Monoid](a: A): Eithers[A, B] =
@@ -29,7 +30,7 @@ sealed class Eithers[A: Monoid, B: Monoid](
     Eithers(toList ++ p.toList)
 
   def fold[Z: Monoid](f: A => Z, g: B => Z): Z =
-    toList.foldRight(Monoid[Z].empty) {
+    toList.foldRight(Monoid[Z].zero) {
       case (Left(a), z) => f(a) |+| z
       case (Right(b), z) => g(b) |+| z
     }
