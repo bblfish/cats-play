@@ -41,7 +41,8 @@ val parrallelTask: ParallelTask[List[User]] = loginsApp.foldMap(interpreter andT
 
 val users1 = parrallelTask.unwrap.unsafePerformSync
 val users2 = loginsApp.foldMap(interpreter).unsafePerformSync
-//if Task is run in a parallel applicative this should not be the same
+
+//running tasks in parallel and synchronously gives the same results
 users1 == users2
 
 //let's just check the exact order
