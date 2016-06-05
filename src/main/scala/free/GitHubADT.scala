@@ -183,4 +183,39 @@ object GitHubApplicative {
 
   def loginsToApp(logins: List[String]): GHApplicative[List[User]] = logins.traverseU(getUser(_))
 
+  //
+  //all functions below to optimise fetching logins
+  //
+  val logins: GitHub ~> λ[α=>Set[String]] = new (GitHub ~> λ[α=>Set[String]]) {
+    override def apply[A](fa: GitHub[A]): Set[String] = fa match {
+      case GetUser(name) => Set(name)
+      case _ => Set()
+    }
+  }
+
+  def extractLogins(p: GHApplicative[_]): Set[String] = p.analyze(logins)
+
+  def precompute[A, F[_]: Applicative](
+    p: GHApplicative[A],
+    interp: GitHub ~> F
+  ): F[Map[String,User]] = {
+    val userLogins = extractLogins(p).toList
+    val fetched: F[List[User]] = userLogins.traverseU(getUser).foldMap(interp)
+    Functor[F].map(fetched)(userLogins.zip(_).toMap)
+  }
+
+  def optimizeNat[F[_]: Applicative](
+    nameToUser: Map[String,User],
+    interp: GitHub ~> F
+  ): GitHub ~> F = new (GitHub ~> F) {
+    override def apply[A](fa: GitHub[A]): F[A] = fa match {
+      case ffa@GetUser(login) => nameToUser.get(login) match {
+        case Some(user) => Applicative[F].pure(user)
+        case None => interp(ffa)
+      }
+      case other => interp(other)
+    }
+  }
+
+
 }
