@@ -22,6 +22,8 @@ object ApplicationBuild extends Build {
   val effcats = "org.atnos" %% "eff-cats" % "1.6.2"
   val si27212fix = compilerPlugin("com.milessabin" % "si2712fix-plugin_2.11.8" % "1.2.0")
 
+  val typesafeconfig =  "com.typesafe" % "config" % "1.3.0"
+
   //in order to run from `sbt test:console`, to reduce the requests to github in Free examples
   val ammonite = "com.lihaoyi" % "ammonite-repl" % "0.5.8" % "test" cross CrossVersion.full
 

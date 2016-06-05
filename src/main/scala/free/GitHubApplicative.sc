@@ -1,6 +1,12 @@
 //run these from sbt shell preferably with ammonite
 //to reduce calls to server
 
+import java.io.File
+import java.net.URL
+import java.nio.file.Files
+
+import com.typesafe.config.ConfigFactory
+
 import scalaz.{Applicative, Functor, Monad, ~>}
 import scalaz.Scalaz._
 import scalaz.concurrent.{Strategy, Task}
@@ -16,9 +22,12 @@ import Task.taskParallelApplicativeInstance
 
 //get your token from https://github.com/settings/tokens/new
 //see https://developer.github.com/v3/oauth/
-val token = "c_"
-val client = PooledHttp1Client()
+//and place it in the file of your choosing and point to it here:
+val config = ConfigFactory.parseFile(new File("/Users/hjs/tmp/github.conf"))
+val token = config.getString("github.token")
 
+
+val client = PooledHttp1Client()
 val interpreter: GitHub ~> Task = GHInterpret(client,GitHubAuth(token))
 
 
