@@ -1,14 +1,13 @@
 package free
 
-import java.util.concurrent.ExecutorService
-
 import _root_.argonaut.{CodecJson, _}
 import _root_.argonaut.Argonaut._
 
-import scalaz.{-\/, Applicative, Free, FreeAp, Functor, Monad, Nondeterminism, Scalaz, Tag, \/-, ~>}
+import scalaz.{-\/, Applicative, Coproduct, Free, FreeAp, Functor, Monad, NaturalTransformation, Nondeterminism, Scalaz, Tag, \/-, ~>}
 import org.http4s._
 import org.http4s.client.Client
 
+import Scalaz._
 import scalaz.Tags.Parallel
 import scalaz.concurrent.Task
 import scalaz.concurrent.Task.ParallelTask
@@ -94,7 +93,6 @@ object GitHubMonadic {
 
 //  import cats.syntax.traverse._
 //  import cats.std.list._
-  import Scalaz._
 
   //clearly this is just a toy example and does not make much sense since the github api returns all
   //the information in each request, meaning that making seperate requests for users is not really needed
@@ -186,7 +184,7 @@ object GitHubApplicative {
   //
   //all functions below to optimise fetching logins
   //
-  val logins: GitHub ~> λ[α=>Set[String]] = new (GitHub ~> λ[α=>Set[String]]) {
+  val logins: GitHub ~> λ[α => Set[String]] = new (GitHub ~> λ[α => Set[String]]) {
     override def apply[A](fa: GitHub[A]): Set[String] = fa match {
       case GetUser(name) => Set(name)
       case _ => Set()
@@ -195,17 +193,17 @@ object GitHubApplicative {
 
   def extractLogins(p: GHApplicative[_]): Set[String] = p.analyze(logins)
 
-  def precompute[A, F[_]: Applicative](
+  def precompute[A, F[_] : Applicative](
     p: GHApplicative[A],
     interp: GitHub ~> F
-  ): F[Map[String,User]] = {
+  ): F[Map[String, User]] = {
     val userLogins = extractLogins(p).toList
     val fetched: F[List[User]] = userLogins.traverseU(getUser).foldMap(interp)
     Functor[F].map(fetched)(userLogins.zip(_).toMap)
   }
 
-  def optimizeNat[F[_]: Applicative](
-    nameToUser: Map[String,User],
+  def optimizeNat[F[_] : Applicative](
+    nameToUser: Map[String, User],
     interp: GitHub ~> F
   ): GitHub ~> F = new (GitHub ~> F) {
     override def apply[A](fa: GitHub[A]): F[A] = fa match {
@@ -217,5 +215,83 @@ object GitHubApplicative {
     }
   }
 
+  //optimising interpreter from GHApplicative to Task
+  case class InterpretOptNat[A](
+    //we can't just be general and have an T: Applicative as otherwise
+    //we don't get the flatMap below!
+    interp: GitHub ~> Task
+  ) extends (GHApplicative ~> Task) {
+
+    import scalaz.Tags._
+    import scalaz.concurrent.Task.ParallelTask
+    import scalaz.syntax.tag._
+    import Task.taskParallelApplicativeInstance
+
+
+    override
+    def apply[A](p: GHApplicative[A]): Task[A] = {
+      val mapping: ParallelTask[Map[String, User]] =
+        precompute(p, interp andThen ParallelTaskNat)
+      // we need to be able to move from a ParallelTask to a Task to get the
+      // flatMap
+      mapping.unwrap.flatMap { m =>
+        val betterNat = optimizeNat(m, interp andThen ParallelTaskNat)
+        p.foldMap(betterNat).unwrap //again we want to return a normal Task
+      }
+    }
+  }
+}
+
+
+
+object GitHubBoth {
+  import GitHubApplicative.GHApplicative
+  type GHCo[A] = Coproduct[GitHub,GHApplicative,A]
+  type GHBoth[A] = Free[GHCo[?],A]
+
+  implicit class ScalaZNatTrans[F[_],G[_]](val nt: NaturalTransformation[F,G]) extends AnyVal {
+
+    def or[H[_]](h:  NaturalTransformation[H,G]): NaturalTransformation[Coproduct[F, H, ?],G] =
+      new (NaturalTransformation[Coproduct[F, H, ?],G]) {
+        def apply[A](fa: Coproduct[F, H, A]): G[A] = fa.run match {
+          case -\/(ff) => nt.apply(ff)
+          case \/-(gg) => h.apply(gg)
+        }
+      }
+  }
+
+  def listIssuesB(owner: String, repo: String): GHBoth[List[Issue]] =
+    Free.liftF(Coproduct.left(ListIssues(owner, repo)))
+
+  def getCommentsB(owner: String, repo: String, issue: Int): GHBoth[List[Comment]] =
+    Free.liftF(Coproduct.left(GetComments(owner, repo, issue)))
+
+  def getUserB(login: String): GHBoth[User] =
+    Free.liftF(Coproduct.left(GetUser(login)))
+
+  def embed[A](g: GHApplicative[A]):  GHBoth[A] =
+    Free.liftF[Coproduct[GitHub,GHApplicative,?],A](Coproduct.right(g))
+
+  def interpretMix(client: Client, auth: GitHubAuth): GHCo ~> Task = {
+    import GitHubApplicative.InterpretOptNat
+    val interp = GHInterpret(client, auth)
+    val appInterp = InterpretOptNat(interp)
+    interp.or[GHApplicative](appInterp)
+  }
+
+  def allUsersM(owner: String, repo: String): GHBoth[List[(Issue, List[(Comment, User)])]] = for {
+    issues <- listIssuesB(owner, repo)
+    issueComments <-  embed {
+      issues.traverseU((i: Issue) =>
+        GitHubApplicative.getComments(owner, repo, i.number).map[(Issue, List[Comment])]((i, _)))
+    }
+    users <- embed {
+      issueComments.traverseU { case (issue, comments) =>
+        comments.traverseU((comment: Comment) =>
+          GitHubApplicative.getUser(comment.user.login).map((comment, _))
+        ).map((issue, _))
+      }
+    }
+  } yield users
 
 }
